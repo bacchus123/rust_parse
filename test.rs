@@ -1,14 +1,15 @@
 #![feature(unboxed_closures)]
+#![feature(unboxed_closure_sugar)]
 #![feature(globs)]
+
 use combinators::*;
 use combinators::parser::*;
 use combinators::parser::parse_stream::*;
 
-
 mod combinators;
+
 fn main(){
-    let parser: Parser<&str> = Parser{
-        parse :  box |&: mut x: Stream|{
+    let parser = box |&: mut x: Stream|{
             if x.skip("Hello"){
                 (x, Ok("Hello", std::vec::Vec::new()))
             }else{
@@ -16,18 +17,16 @@ fn main(){
                 error_vec.push(String::from_str("Nope"));
                 (x, Error(error_vec))
             }
-        }
-    };
-    let per_parse : Parser<&str> = Parser{
-        parse : box |&: mut x: Stream| {
+        };
+    let per_parse =  box |&: mut x: Stream| {
             if x.skip("."){
-                (x, parser::Ok(".", std::vec::Vec::new()))
+                (x, Ok(".", std::vec::Vec::new()))
             }else{
-                (x, parser::Error( vec!()))
+                (x, Error( vec!(String::from_str("Expected ."))))
             }
-        }
-    };
-    let hello_sent : Parser<&str> = combinators::first(parser, per_parse);
-    hello_sent.run(Stream::new("Hello."));
-    hello_sent.run(Stream::new("Hello "));
+        };
+    let hello_sent : Parser<&str> = combinators::first(&*parser, &*per_parse);
+    //run(parser, Stream::new("Hello."));
+    //run(per_parse, Stream::new("asdf."));
+    //run(hello_sent, Stream::new("Hello "));
 }

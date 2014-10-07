@@ -1,26 +1,18 @@
-#![feature(unboxed_closures)]
 pub mod parser;
 
-pub fn first<'a, O, V> (p1 : parser::Parser<'a,O>, p2 : parser::Parser<'a,V>)->parser::Parser<'a,O>{
-        parser::Parser{
-            parse : box |&: mut x:parser::parse_stream::Stream|{
-                let first = p1.parse.call((x,));
-                match first{
-                    (x, parser::Ok(r, opt_errs))=>{
-                        let second = p2.parse.call((x,));
-                        match second
-                        {
-                            (x, parser::Error(p2_errs))=> {
-                                (x, parser::Error(opt_errs.append(p2_errs.as_slice())))
-                            }
-                            (x, parser::Ok(_, p2_opt_errs)) =>{
-                                (x, parser::Ok(r, opt_errs.append(p2_opt_errs.as_slice())))
-                            }
-                        }
-                    }
-                    _ => first
+pub fn first<'a,'b,  O, V> (p1 : &'b parser::Parser<'a,O>,p2 :& 'b  parser::Parser<'a,V>)-> Fn<(parser::parse_stream::Stream,),(parser::parse_stream::Stream,parser::ParseResult<O>)> + 'a 
+{            
+    |&: x : parser::parse_stream::Stream|->(parser::parse_stream::Stream, parser::ParseResult<O>)
+    {
+        match p1.call((x,)){
+            (i, parser::Error(err)) => (i, parser::Error(err)),
+            (i, parser::Ok(res, err)) => {
+                match p2.call((i,)){
+                    (stream , parser::Error(p2err)) => (stream, parser::Error(err.append(p2err.as_slice()))),
+                    (stream, parser::Ok(_, p2err)) => (stream, parser::Ok(res, err.append(p2err.as_slice())))
                 }
             }
         }
-        
-    }
+    } as  Fn<(parser::parse_stream::Stream,),(parser::parse_stream::Stream,parser::ParseResult<O>)>
+}
+
